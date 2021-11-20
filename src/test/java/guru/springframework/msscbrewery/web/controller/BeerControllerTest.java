@@ -33,7 +33,7 @@ import static org.springframework.restdocs.snippet.Attributes.key;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(RestDocumentationExtension.class)
-@AutoConfigureRestDocs
+@AutoConfigureRestDocs(uriScheme = "http", uriHost = "localhost", uriPort = 8080)
 @WebMvcTest(BeerController.class)
 public class BeerControllerTest {
 
@@ -65,21 +65,18 @@ public class BeerControllerTest {
 
         mockMvc.perform(get("/api/v1/beer/{beerId}", validBeer.getId().toString()).accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id", is(validBeer.getId().toString())))
                 .andExpect(jsonPath("$.beerName", is("Beer1")))
                 .andDo(document("v1/beer-get",
-                        pathParameters (
-                                parameterWithName("beerId").description("UUID of desired beer to get.")
-                        ),
-                        responseFields(
-                                fields.withPath("id").description("Id of Beer").type(UUID.class),
-                                fields.withPath("createdDate").description("Date Created").type(OffsetDateTime.class),
-                                fields.withPath("lastUpdatedDate").description("Date Updated").type(OffsetDateTime.class),
-                                fields.withPath("beerName").description("Beer Name"),
-                                fields.withPath("beerStyle").description("Beer Style"),
-                                fields.withPath("upc").description("UPC of Beer")
-                        )));
+                                pathParameters(
+                                        parameterWithName("beerId").description("UUID of desired beer to get.")
+                                ),
+                                responseFields(
+                                        beerResponseConstrainedDescriptor
+                                )
+                        )
+                );
     }
 
     @Test
@@ -95,18 +92,13 @@ public class BeerControllerTest {
         ConstrainedFields fields = new ConstrainedFields(BeerDto.class);
 
         mockMvc.perform(post("/api/v1/beer/")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(beerDtoJson))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(beerDtoJson))
                 .andExpect(status().isCreated())
                 .andDo(document("v1/beer-new",
-                        requestFields(
-                                fields.withPath("id").description("Id of Beer").ignored(),
-                                fields.withPath("createdDate").description("Date Created").ignored(),
-                                fields.withPath("lastUpdatedDate").description("Date Updated").ignored(),
-                                fields.withPath("beerName").description("Beer Name"),
-                                fields.withPath("beerStyle").description("Beer Style"),
-                                fields.withPath("upc").description("UPC of Beer")
-                        )));
+                                requestFields(beerRequestConstrainedDescriptor)
+                        )
+                );
 
     }
 
@@ -119,8 +111,8 @@ public class BeerControllerTest {
 
         //when
         mockMvc.perform(put("/api/v1/beer/" + UUID.randomUUID())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(beerDtoJson))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(beerDtoJson))
                 .andExpect(status().isNoContent());
 
         then(beerService).should().updateBeer(any(), any());
@@ -140,4 +132,24 @@ public class BeerControllerTest {
                             .descriptionsForProperty(path), ". ")));
         }
     }
+
+    ConstrainedFields constrainedRequestFields = new ConstrainedFields(BeerDto.class);
+    FieldDescriptor[] beerRequestConstrainedDescriptor = new FieldDescriptor[]{
+            constrainedRequestFields.withPath("id").description("Id of Beer").ignored(),
+            constrainedRequestFields.withPath("createdDate").description("Date Created").ignored(),
+            constrainedRequestFields.withPath("lastUpdatedDate").description("Date Updated").ignored(),
+            constrainedRequestFields.withPath("beerName").description("Beer Name"),
+            constrainedRequestFields.withPath("beerStyle").description("Beer Style"),
+            constrainedRequestFields.withPath("upc").description("UPC of Beer")
+    };
+
+    ConstrainedFields constrainedResponseFields = new ConstrainedFields(BeerDto.class);
+    FieldDescriptor[] beerResponseConstrainedDescriptor = new FieldDescriptor[]{
+            constrainedResponseFields.withPath("id").description("Id of Beer").type(UUID.class),
+            constrainedResponseFields.withPath("createdDate").description("Date Created").type(OffsetDateTime.class),
+            constrainedResponseFields.withPath("lastUpdatedDate").description("Date Updated").type(OffsetDateTime.class),
+            constrainedResponseFields.withPath("beerName").description("Beer Name"),
+            constrainedResponseFields.withPath("beerStyle").description("Beer Style"),
+            constrainedResponseFields.withPath("upc").description("UPC of Beer")
+    };
 }
